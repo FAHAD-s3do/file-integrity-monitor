@@ -25,15 +25,29 @@ Use `python3 examples/demo.py` for a self-contained temporary-directory demonstr
 - Skips symlinks and non-regular files; detects ordinary file mutation during hashing using before/after metadata.
 - Coverage errors turn absent files into unresolved absences instead of confirmed deletions.
 - Refuses baseline overwrite and baseline placement inside the watched tree.
-- Check exit codes: 0 no confirmed changes, 1 confirmed changes, 2 errors/unresolved absences.
+- Check exit codes: 0 complete coverage with no changes, 1 complete coverage with changes, 2 incomplete coverage or errors (even if changes also exist).
+- Reports expose `baseline_complete` and `current_complete` separately, with saved baseline errors/skips retained as `baseline_errors` and `baseline_skipped`.
+
+### Coverage-aware checks
+
+`complete` is true only when both snapshots have no collection errors or skipped
+paths. An incomplete current scan still reports known changes but does not call
+unobserved baseline paths confirmed removals. Gaps in a saved baseline also prevent
+a complete verdict, even if a later scan has no gaps. An `added` path means it was
+not recorded in the baseline; it might have existed in a previously skipped area.
+
+Baseline creation still permits skipped paths and reports them explicitly; success
+means the baseline was saved, not that coverage was complete. Protect the saved
+baseline and resolve skipped paths before relying on a clean check. This changes
+earlier check behavior where skipped paths could return exit 0.
 
 ## Scope and limitations
 
-Not a daemon or trusted forensic acquisition tool. No ACLs, ownership, xattrs, signatures, remote storage or authenticated baseline. Parent-directory races and hostile privileged tampering are outside its guarantees; scan a quiescent trusted tree. Linux/POSIX target; O_NOFOLLOW support matters. Hashing large trees can be expensive; no size limit. Skipped paths make coverage incomplete even if check exits 0. Store and protect baselines separately; whoever can alter both baseline and target can hide changes. Root path must match the baseline.
+Not a daemon or trusted forensic acquisition tool. No ACLs, ownership, xattrs, signatures, remote storage or authenticated baseline. Parent-directory races and hostile privileged tampering are outside its guarantees; scan a quiescent trusted tree. Linux/POSIX target; O_NOFOLLOW support matters. Hashing large trees can be expensive; no size limit. Skipped paths make coverage incomplete and check exits 2. Store and protect baselines separately; whoever can alter both baseline and target can hide changes. Root path must match the baseline.
 
 ## Validation
 
-7 unit tests passed locally on Python 3.12.14. Synthetic CLI examples were executed and results are included under `examples/`. No customer data, historical lab results or production effectiveness is claimed. CI configuration is supplied; remote CI status must be checked after publishing.
+14 unit tests passed locally on Python 3.12.14, including baseline/current coverage gaps and CLI exit-code regression tests. Synthetic CLI examples were executed and results are included under `examples/`. No customer data, historical lab results or production effectiveness is claimed. CI configuration is supplied; remote CI status must be checked after publishing.
 
 ## Files
 

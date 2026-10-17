@@ -45,10 +45,14 @@ def compare(old,new):
     added=sorted(current.keys()-previous.keys())
     absent=sorted(previous.keys()-current.keys())
     uncertain=bool(new['errors'] or new['skipped'])
+    baseline_complete=not bool(old['errors'] or old['skipped'])
     return dict(added=added,removed=[] if uncertain else absent,unresolved_absences=absent if uncertain else [],
                 modified=sorted(k for k in current.keys() & previous.keys() if current[k]!=previous[k]),
-                errors=new['errors'],skipped=new['skipped'],complete=not uncertain,
-                note='SHA-256, size and mode compared. Absences are not called deletions when coverage is incomplete.')
+                errors=new['errors'],skipped=new['skipped'],
+                baseline_errors=old['errors'],baseline_skipped=old['skipped'],
+                baseline_complete=baseline_complete,current_complete=not uncertain,
+                complete=baseline_complete and not uncertain,
+                note='SHA-256, size and mode compared. Absences are not called deletions when current coverage is incomplete. Added means absent from the recorded baseline, not necessarily newly created; baseline gaps may predate this check.')
 
 
 def main():
@@ -65,7 +69,7 @@ def main():
             print(json.dumps(dict(files=len(current['files']),skipped=current['skipped'])))
         else:
             result=compare(json.loads(baseline.read_text()),current);print(json.dumps(result,indent=2))
-            return 2 if result['errors'] or result['unresolved_absences'] else int(bool(result['added'] or result['removed'] or result['modified']))
+            return 2 if not result['complete'] else int(bool(result['added'] or result['removed'] or result['modified']))
     except (OSError,ValueError,KeyError,TypeError) as exc:p.exit(2,str(exc)+'\n')
     return 0
 if __name__=='__main__':raise SystemExit(main())

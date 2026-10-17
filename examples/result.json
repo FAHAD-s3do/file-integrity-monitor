@@ -9,6 +9,10 @@
   ],
   "errors": [],
   "skipped": [],
+  "baseline_errors": [],
+  "baseline_skipped": [],
+  "baseline_complete": true,
+  "current_complete": true,
   "complete": true,
-  "note": "SHA-256, size and mode compared. Absences are not called deletions when coverage is incomplete."
+  "note": "SHA-256, size and mode compared. Absences are not called deletions when current coverage is incomplete. Added means absent from the recorded baseline, not necessarily newly created; baseline gaps may predate this check."
 }

@@ -3,8 +3,52 @@ import argparse
 import hashlib
 import json
 import os
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import stat
+
+
+def _relative_path(value, field):
+    if not isinstance(value, str) or not value or '\\' in value:
+        raise ValueError(f'{field} must contain canonical relative POSIX paths')
+    path = PurePosixPath(value)
+    if path.is_absolute() or '..' in path.parts or path.as_posix() != value or value == '.':
+        raise ValueError(f'{field} must contain canonical relative POSIX paths')
+
+
+def validate_snapshot(value, label='Snapshot'):
+    """Validate persisted snapshot data before it can influence a verdict."""
+    if not isinstance(value, dict):
+        raise ValueError(f'{label} must be a JSON object')
+    if value.get('schema') != 1:
+        raise ValueError('Unsupported baseline schema')
+    root = value.get('root')
+    if not isinstance(root, str) or not root or not Path(root).is_absolute():
+        raise ValueError(f'{label} root must be an absolute path')
+    files = value.get('files')
+    if not isinstance(files, dict):
+        raise ValueError(f'{label} files must be an object')
+    for relative, record in files.items():
+        _relative_path(relative, f'{label} files')
+        if not isinstance(record, dict):
+            raise ValueError(f'{label} file records must be objects')
+        digest = record.get('sha256')
+        if (not isinstance(digest, str) or len(digest) != 64 or
+                any(char not in '0123456789abcdef' for char in digest)):
+            raise ValueError(f'{label} file sha256 must be 64 lowercase hexadecimal characters')
+        size = record.get('size')
+        mode = record.get('mode')
+        if isinstance(size, bool) or not isinstance(size, int) or size < 0:
+            raise ValueError(f'{label} file size must be a non-negative integer')
+        if isinstance(mode, bool) or not isinstance(mode, int) or not 0 <= mode <= 0o7777:
+            raise ValueError(f'{label} file mode must be an integer from 0 to 4095')
+    for field in ('errors', 'skipped'):
+        entries = value.get(field)
+        if not isinstance(entries, list) or any(not isinstance(item, str) for item in entries):
+            raise ValueError(f'{label} {field} must be a list of strings')
+        if field == 'skipped':
+            for entry in entries:
+                _relative_path(entry, f'{label} skipped')
+    return value
 
 
 def snapshot(root):
@@ -39,7 +83,8 @@ def snapshot(root):
 
 
 def compare(old,new):
-    if old.get('schema')!=1 or new.get('schema')!=1:raise ValueError('Unsupported baseline schema')
+    validate_snapshot(old, 'Baseline')
+    validate_snapshot(new, 'Current snapshot')
     if old['root']!=new['root']:raise ValueError('Baseline root mismatch')
     previous=old['files'];current=new['files']
     added=sorted(current.keys()-previous.keys())

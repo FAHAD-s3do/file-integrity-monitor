@@ -46,13 +46,18 @@ with exit code 2 instead of influencing an integrity verdict. Protect the saved
 baseline and resolve skipped paths before relying on a clean check. This changes
 earlier check behavior where skipped paths could return exit 0.
 
+Baseline JSON is read as UTF-8 and duplicate object keys are rejected at every
+nesting level before schema validation. Repeated file records or coverage fields
+cannot silently replace earlier values. Such inputs exit 2 with a diagnostic and
+no integrity report. This validates representation, not baseline authenticity.
+
 ## Scope and limitations
 
 Not a daemon or trusted forensic acquisition tool. No ACLs, ownership, xattrs, signatures, remote storage or authenticated baseline. Parent-directory races and hostile privileged tampering are outside its guarantees; scan a quiescent trusted tree. Linux/POSIX target; O_NOFOLLOW support matters. Hashing large trees can be expensive; no size limit. Skipped paths make coverage incomplete and check exits 2. Store and protect baselines separately; whoever can alter both baseline and target can hide changes. Root path must match the baseline.
 
 ## Validation
 
-19 unit tests passed locally on Python 3.12.14, including malformed-baseline, unsafe-path, coverage-gap and CLI exit-code regression tests. Synthetic CLI examples were executed and results are included under `examples/`. No customer data, historical lab results or production effectiveness is claimed. CI configuration is supplied; remote CI status must be checked after publishing.
+22 unit tests passed locally on Python 3.12.14, including malformed-baseline, unsafe-path, coverage-gap and CLI exit-code regression tests. Synthetic CLI examples were executed and results are included under `examples/`. No customer data, historical lab results or production effectiveness is claimed. CI configuration is supplied; remote CI status must be checked after publishing.
 
 ## Files
 
@@ -65,4 +70,5 @@ Not a daemon or trusted forensic acquisition tool. No ACLs, ownership, xattrs, s
 ## Safe operation
 
 Use inputs and hosts you own or are authorized to assess. Review reports before publication; real files, headers and logs can contain sensitive information. These tools do not establish that a system is secure or compromised.
+
 

@@ -7,6 +7,18 @@ from pathlib import Path, PurePosixPath
 import stat
 
 
+def load_baseline(path):
+    """Reject duplicate JSON members before baseline schema validation."""
+    def unique_object(pairs):
+        result = {}
+        for key, value in pairs:
+            if key in result:
+                raise ValueError('Duplicate baseline JSON key: ' + repr(key))
+            result[key] = value
+        return result
+    return json.loads(Path(path).read_text(encoding='utf-8'), object_pairs_hook=unique_object)
+
+
 def _relative_path(value, field):
     if not isinstance(value, str) or not value or '\\' in value:
         raise ValueError(f'{field} must contain canonical relative POSIX paths')
@@ -113,8 +125,9 @@ def main():
             with os.fdopen(fd,'w') as f:json.dump(current,f,indent=2)
             print(json.dumps(dict(files=len(current['files']),skipped=current['skipped'])))
         else:
-            result=compare(json.loads(baseline.read_text()),current);print(json.dumps(result,indent=2))
+            result=compare(load_baseline(baseline),current);print(json.dumps(result,indent=2))
             return 2 if not result['complete'] else int(bool(result['added'] or result['removed'] or result['modified']))
     except (OSError,ValueError,KeyError,TypeError) as exc:p.exit(2,str(exc)+'\n')
     return 0
 if __name__=='__main__':raise SystemExit(main())
+
